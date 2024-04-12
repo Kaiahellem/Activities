@@ -5,6 +5,10 @@ struct ActivityData: Codable {
     let activity: String
     let participants: Int
     let price: Float
+    let type: String
+    let key: String
+    let accessibility: Float
+    
 }
 
 struct ActivityView: View {
@@ -16,6 +20,9 @@ struct ActivityView: View {
     @State private var activity: Activity?
     @State private var isRegistering: Activity?
     @State private var selectedActivities: [Activity] = []
+    @State private var numberOfParticipants: Int?
+    @State private var isNumberOfParticipantsValid = true
+    @State private var numberOfParticipantsString = ""
     
     var body: some View {
         VStack {
@@ -28,15 +35,64 @@ struct ActivityView: View {
                         .padding()
                     Text("Participants: \(activity.participants)")
                     Text("Price: \(activity.price, specifier: "%.2f")")
-                    Spacer()
-                    HStack {
+                    Text("Accessibility: \(activity.accessibility, specifier: "%.2f")")
+                    Text("Type: \(activity.type ?? "Unknown")")
+                    Text("Key: \(activity.key ?? "Unknown")")
+                   
+                    Spacer(minLength: 100)
+                    
+                    VStack {
                         Button("Find new activity") {
-                            fetchActivity()
+                            fetchActivity(numberOfParticipants: numberOfParticipants)
                         }
+                        .font(.system(size: 20, weight: .bold, design: .default))
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(Color.white)
+                        .cornerRadius(9)
+                        
+                        
+                        TextField("Number of participants", text: $numberOfParticipantsString)
+                            .frame(width: 200, height: 50)
+                            .font(.system(size: 15, weight: .bold, design: .default))
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(Color.blue)
+                            .border(isNumberOfParticipantsValid || numberOfParticipantsString.isEmpty ? Color.blue : Color.red)
+                            .cornerRadius(9)
+                            .onChange(of: numberOfParticipantsString) { newValue in
+                                if newValue.isEmpty {
+                                      // Reset error state if field is empty
+                                      isNumberOfParticipantsValid = true
+                                      numberOfParticipants = nil
+                                  } else if let participants = Int(newValue) {
+                                      if participants <= 0 || participants > 100 {
+                                          isNumberOfParticipantsValid = false
+                                      } else {
+                                          isNumberOfParticipantsValid = true
+                                          numberOfParticipants = participants
+                                      }
+                                  } else {
+                                      numberOfParticipants = nil
+                                  }
+                              }
+                        
+                        
+                        if !isNumberOfParticipantsValid {
+                            Text("Invalid number of participants. Please enter a number between 1 and 100.")
+                                .foregroundColor(.red)
+                        }
+                        
+                        Spacer()
+                        
                         Button("Register as performed") {
-                                            selectedActivities.append(activity)
-                                            isRegistering = activity // Set the selected activity
+                            selectedActivities.append(activity)
+                            isRegistering = activity //Sets the selected activityy
                         }
+                        .font(.system(size: 20, weight: .bold, design: .default))
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(Color.white)
+                        .cornerRadius(9)
                     }
                     .padding(.bottom)
                 }
@@ -44,23 +100,33 @@ struct ActivityView: View {
                 Button("Show activity") {
                     fetchActivity()
                 }
+                .font(.system(size: 24, weight: .bold, design: .default))
+                .padding()
+                .background(Color.blue)
+                .foregroundColor(Color.white)
+                .cornerRadius(9)
             }
         }
         .padding()
         .sheet(item: $isRegistering) { selectedActivity in
-                    RegisterView(selectedActivity: selectedActivity, activities: activities.map { $0 }, selectedActivities: selectedActivities)
+            RegisterView(selectedActivity: selectedActivity, activities: activities.map { $0 }, selectedActivities: selectedActivities)
         }
     }
     
-    func fetchActivity() {
+    func fetchActivity(numberOfParticipants: Int? = nil) {
         isLoading = true
         
         // Set up URL and request
-        let url = URL(string: "https://www.boredapi.com/api/activity")!
+        var components = URLComponents(string: "https://www.boredapi.com/api/activity")!
+        components.queryItems = numberOfParticipants != nil ? [URLQueryItem(name: "participants", value: String(numberOfParticipants!))] : nil
+
+        print(components)
+        
+        let url = components.url!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
-        // Perform the request
+        // Request
         URLSession.shared.dataTask(with: request) { data, response, error in
             guard let data = data else {
                 print("Error: No data returned from API.")
@@ -77,6 +143,9 @@ struct ActivityView: View {
                 newActivity.activity = activityData.activity
                 newActivity.participants = Int16(activityData.participants)
                 newActivity.price = activityData.price
+                newActivity.type = activityData.type
+                newActivity.key = activityData.key
+                newActivity.accessibility = activityData.accessibility
                 
                 do {
                     try viewContext.save()
@@ -94,8 +163,8 @@ struct ActivityView: View {
     }
 }
 
-/*struct ActivityView_Previews: PreviewProvider {
+struct ActivityView_Previews: PreviewProvider {
     static var previews: some View {
-        ActivityView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+        ActivityView()
     }
-} */
+}

@@ -19,19 +19,17 @@ struct RegisterView: View {
     var body: some View {
         VStack {
             Text(selectedActivity?.activity ?? "No activity selected")
-            
+                .font(.title)
+         
             DatePicker("Select date", selection: $selectedDate, displayedComponents: [.date])
-                .datePickerStyle(GraphicalDatePickerStyle())
-                .padding(.horizontal)
-            
-            Spacer()
+                .datePickerStyle(.wheel)
             
             HStack {
                 Button("Cancel") {
                     presentationMode.wrappedValue.dismiss()
                 }
                 
-                Spacer()
+           Spacer()
                 
                 Button("Save") {
                     savePerformedActivity()
@@ -41,25 +39,23 @@ struct RegisterView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
-        .background(Color.white)
-        .cornerRadius(10)
-        .padding()
-        .shadow(radius: 5)
-        .frame(height: 300)
     }
     
     func savePerformedActivity() {
-        for activity in selectedActivities {
-               let newPerformedActivity = PerformedActivity(context: viewContext)
-               newPerformedActivity.name = activity.activity
-               newPerformedActivity.date = selectedDate // Set the date for the performed activity
-           }
+        guard let selectedActivity = selectedActivity else {
+            return
+        }
+        
+        let newPerformedActivity = PerformedActivity(context: viewContext)
+        newPerformedActivity.name = selectedActivity.activity
+        newPerformedActivity.date = selectedDate
+        newPerformedActivity.price = selectedActivity.price
+        
         do {
             try viewContext.save()
-            print("Activities saved to database.")
+            print("Activity saved to database.")
         } catch {
-            print("Error saving performed activities: \(error.localizedDescription)")
+            print("Error saving performed activity: \(error.localizedDescription)")
         }
     }
-
 }
